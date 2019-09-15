@@ -150,6 +150,40 @@ void CallAndPauseOnStart(const FunctionCallbackInfo<v8::Value>& args) {
   }
 }
 
+void V8CallAndPauseOnStart(const FunctionCallbackInfo<v8::Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  CHECK_GT(args.Length(), 1);
+  // CHECK(args[0]->IsFunction());
+
+
+  // Create a string containing the JavaScript source code.
+  // v8::Local<v8::String> source =
+  //     v8::String::NewFromUtf8(env->isolate(), args[0],
+  //                             v8::NewStringType::kNormal)
+  //         .ToLocalChecked();
+
+
+  SlicedArguments call_args(args, /* start */ 2);
+
+
+  env->inspector_agent()->PauseOnNextJavascriptStatement("Break on start");
+
+  // Compile the source code.
+  v8::Local<v8::Script> script =
+      v8::Script::Compile(env->context(), args[0].As<v8::String>()).ToLocalChecked();
+
+  // Run the script to get the result.
+  v8::MaybeLocal<v8::Value> retval = script->Run(env->context()).ToLocalChecked();
+
+  // v8::MaybeLocal<v8::Value> retval =
+  //     args[0].As<v8::Function>()->Call(env->context(), args[1],
+  //                                      call_args.length(), call_args.out());
+
+  if (!retval.IsEmpty()) {
+    args.GetReturnValue().Set(retval.ToLocalChecked());
+  }
+}
+
 void InspectorConsoleCall(const FunctionCallbackInfo<Value>& info) {
   Environment* env = Environment::GetCurrent(info);
   Isolate* isolate = env->isolate();
@@ -285,6 +319,7 @@ void Initialize(Local<Object> target, Local<Value> unused,
   env->SetMethod(
       target, "setConsoleExtensionInstaller", SetConsoleExtensionInstaller);
   env->SetMethod(target, "callAndPauseOnStart", CallAndPauseOnStart);
+  env->SetMethod(target, "v8callAndPauseOnStart", V8CallAndPauseOnStart);
   env->SetMethod(target, "open", Open);
   env->SetMethodNoSideEffect(target, "url", Url);
   env->SetMethod(target, "waitForDebugger", WaitForDebugger);
